@@ -3,7 +3,7 @@ TempusChecker will simply check all your times and give you a csv file with the 
 For any questions message me on discord: elf_slut.
 
 # IMPORTANT TO USE - requirements
-- You will need Python installed with requests and openpygl.
+- You will need Python installed with requests.
   Download Python from the offical website and  and paste this in the teminal (system terminal cmd with administrator perms):
   - "python -m pip install requests" 
   or if that doesn't work 
