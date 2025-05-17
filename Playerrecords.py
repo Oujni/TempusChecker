@@ -6,7 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import islice
 
-# === CONFIGURATION ===
+
 SOLDIER_CLASS = "3"
 DEMOMAN_CLASS = "4"
 SOLDIER_CSV = "all_maps_soldier_info.csv"
@@ -15,7 +15,7 @@ OUTPUT_CSV = "player_map_records.csv"
 FAILED_CSV = "failed_maps.csv"
 API_URL_TEMPLATE = "https://tempus2.xyz/api/v0/maps/id/{map_id}/zones/typeindex/map/1/records/player/{player_id}/{class_id}"
 
-# === MULTITHREADING & RATE LIMIT CONTROL ===
+
 USE_THREADS = True
 MAX_THREADS = 10
 BATCH_SIZE = 10
@@ -70,7 +70,7 @@ def fetch_player_record(map_entry, player_id, class_id):
             if resp.status_code == 404:
                 return map_entry, None, None
             if resp.status_code == 429:
-                wait_time = 6 * (2 ** attempt)  # starts at 2s, then 4s, 8s...
+                wait_time = 6 * (2 ** attempt)  # starts at 6s, then 12s, 24s... {Extra sefety if api is overloaded}
                 print(f"⏳ Rate limit hit on map {map_id}. Retrying in {wait_time}s...")
                 time.sleep(wait_time)
                 continue
@@ -86,7 +86,7 @@ def fetch_player_record(map_entry, player_id, class_id):
             return map_entry, duration, rank
 
         except requests.exceptions.RequestException as e:
-            wait_time = 2 * (2 ** attempt)  # exponential backoff starting at 2s
+            wait_time = 2 * (2 ** attempt)  #{Extra sefety if api is overloaded}v2
             print(f"⚠️ Error on map {map_id}: {e}. Retrying in {wait_time}s...")
             time.sleep(wait_time)
             continue
@@ -152,7 +152,7 @@ def main():
             print(f"[{i}/{len(maps)}] {map_entry['map_name']} - Time: {formatted_time}, Rank: {rank_val}")
             time.sleep(0.5)
 
-    # === Write main output CSV ===
+    #Our csv 
     output_path = os.path.join(os.getcwd(), OUTPUT_CSV)
     with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
@@ -163,7 +163,7 @@ def main():
         writer.writeheader()
         writer.writerows(results)
 
-    # === Write failed maps to separate CSV ===
+    #faile/incompleted maps
     if failed_maps:
         failed_path = os.path.join(os.getcwd(), FAILED_CSV)
         with open(failed_path, "w", newline="", encoding="utf-8") as f:
