@@ -4,7 +4,7 @@ TempusChecker will simply check all your times and give you a csv file with the 
 
 # IMPORTANT TO USE - requirements
 - You will need Python installed with requests.
-  Download Python from the offical website and  and paste this in the teminal:
+  Download Python from the offical website and  and paste this in the teminal (system terminal):
   "python -m pip install requests" 
   or if that doesn't work 
   "py -m pip install requests"
