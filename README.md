@@ -8,9 +8,7 @@ For any questions message me on discord: elf_slut.
   - "python -m pip install requests" 
   or if that doesn't work 
   - "py -m pip install requests"
-  - "python -m pip install openpyxl"
-  or
-  - "py -m pip install openpyxl"
+
 
 # Instruction
 - Download the files "all_maps_demoman_info.csv" and "all_maps_soldier_info.csv plus the script "Playerrecords.py" and all of them in your folder. (Maps are up to date 17/05/2025)
