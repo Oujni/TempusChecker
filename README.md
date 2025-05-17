@@ -19,3 +19,4 @@ Afterwards select the class you want csv to get for you wait for the script to f
 # IMPORTANT NOTES
 - The script will not update the csv it created on it's own when you get a pr soo keep that in mind unless you generate a new csv file
 - New maps will not be addd automaticly to the maps.csv you will have to generate new one from the file called "MapListSoldier.py" or "MapListDemoman.py"
+- The main scipt will create 2 main files one with with your times one with "failed_maps" it will not only show the maps that failed to load your times what that means is you most likelly do not have a time on that map
