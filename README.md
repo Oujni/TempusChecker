@@ -5,12 +5,12 @@ For any questions message me on discord: elf_slut.
 # IMPORTANT TO USE - requirements
 - You will need Python installed with requests and openpygl.
   Download Python from the offical website and  and paste this in the teminal (system terminal cmd with administrator perms):
-  "python -m pip install requests" 
+  - "python -m pip install requests" 
   or if that doesn't work 
-  "py -m pip install requests"
-  "python -m pip install openpyxl"
+  - "py -m pip install requests"
+  - "python -m pip install openpyxl"
   or
-  "py -m pip install openpyxl"
+  - "py -m pip install openpyxl"
 
 # Instruction
 - Download the files "all_maps_demoman_info.csv" and "all_maps_soldier_info.csv plus the script "Playerrecords.py" and all of them in your folder. (Maps are up to date 17/05/2025)
