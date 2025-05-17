@@ -9,9 +9,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import islice
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import openpyxl
-from openpyxl.styles import Font, PatternFill
-from openpyxl.utils import get_column_letter
 
 # === CONFIGURATION ===
 SOLDIER_CLASS = "3"
@@ -40,79 +37,16 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# === HELPERS ===
+# === CORE LOGIC ===
 def format_time(seconds):
     if seconds is None:
         return ""
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
-    millis = int((seconds - int(seconds)) * 100)
-    return f"{hours}:{minutes:02}:{secs:02}.{millis:02}"
+    millis = int((seconds - int(seconds)) * 1000)
+    return f"{hours:02}:{minutes:02}:{secs:02}:{millis:03}"
 
-def batched(iterable, n):
-    it = iter(iterable)
-    while batch := list(islice(it, n)):
-        yield batch
-
-def get_rank_fill(rank):
-    if rank is None or not str(rank).isdigit():
-        return None
-    rank = int(rank)
-    if rank <= 10:
-        return PatternFill(start_color="D1B3FF", end_color="D1B3FF", fill_type="solid")  # Purple
-    elif rank <= 30:
-        return PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")  # Green
-    elif rank <= 80:
-        return PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")  # Yellow
-    else:
-        return PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type="solid")  # Red
-
-def get_rating_fill(rating):
-    color_map = {
-        "r1": "C6EFCE",
-        "r2": "FFF3CD",
-        "r3": "FFD8B1",
-        "r4": "F8D7DA",
-    }
-    color = color_map.get(rating.lower(), None)
-    if color:
-        return PatternFill(start_color=color, end_color=color, fill_type="solid")
-    return None
-
-def write_excel_with_formatting(filename, data, headers):
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Player Records"
-
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num, value=header)
-        cell.font = Font(bold=True)
-
-    for row_num, row in enumerate(data, 2):
-        for col_num, header in enumerate(headers, 1):
-            value = row.get(header, "")
-            cell = ws.cell(row=row_num, column=col_num, value=value)
-
-            if header == "player_rank":
-                fill = get_rank_fill(value)
-                if fill:
-                    cell.fill = fill
-
-            if header == "map_name":
-                rating = row.get("rating", "")
-                fill = get_rating_fill(rating)
-                if fill:
-                    cell.fill = fill
-
-    for col in ws.columns:
-        max_len = max(len(str(cell.value or "")) for cell in col)
-        ws.column_dimensions[col[0].column_letter].width = max_len + 2
-
-    ws.auto_filter.ref = ws.dimensions
-    wb.save(filename)
-
-# === CORE LOGIC ===
 def load_map_data(csv_path):
     full_path = os.path.join(os.getcwd(), csv_path)
     if not os.path.isfile(full_path):
@@ -154,6 +88,11 @@ def fetch_player_record(map_entry, player_id, class_id, log_fn):
     log_fn(f"❌ Failed after {MAX_RETRIES} retries for map {map_id}")
     return map_entry, None, None
 
+def batched(iterable, n):
+    it = iter(iterable)
+    while batch := list(islice(it, n)):
+        yield batch
+
 # === GUI APP ===
 class TempusApp(tk.Tk):
     def __init__(self):
@@ -162,7 +101,8 @@ class TempusApp(tk.Tk):
         self.geometry("700x500")
         self.configure(padx=20, pady=20)
 
-        self.stop_requested = False
+        self.stop_requested = False  # Flag to request stop
+
         self.create_widgets()
 
     def create_widgets(self):
@@ -207,7 +147,7 @@ class TempusApp(tk.Tk):
             messagebox.showerror("Input Error", "Player ID must be an integer.")
             return
 
-        self.stop_requested = False
+        self.stop_requested = False  # Reset stop flag
         self.start_button.config(state="disabled")
         self.stop_button.config(state="enabled")
 
@@ -240,46 +180,71 @@ class TempusApp(tk.Tk):
 
         self.log(f"🚀 Fetching records for Player {player_id} as {class_name}...")
 
-        for batch in batched(maps, BATCH_SIZE):
-            if self.stop_requested:
-                break
+        if USE_THREADS:
+            for batch_num, batch in enumerate(batched(maps, BATCH_SIZE), 1):
+                if self.stop_requested:
+                    self.log("⏹️ Process stopped by user.")
+                    break
+                self.log(f"⚙️ Processing batch {batch_num} with {len(batch)} maps...")
+                with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+                    futures = {executor.submit(fetch_player_record, m, player_id, class_id, self.log): m for m in batch}
+                    for future in as_completed(futures):
+                        if self.stop_requested:
+                            self.log("⏹️ Process stopped by user.")
+                            break
+                        map_entry, time_val, rank_val = future.result()
+                        formatted_time = format_time(time_val)
 
-            with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
-                futures = {executor.submit(fetch_player_record, m, player_id, class_id, self.log): m for m in batch}
-                for future in as_completed(futures):
-                    if self.stop_requested:
-                        break
-                    map_entry, time_val, rank_val = future.result()
-                    formatted_time = format_time(time_val)
+                        self.log(f"▶️ Processing map: {map_entry['map_name']}")
 
-                    results.append({
-                        "map_name": map_entry["map_name"],
-                        "class": class_name,
-                        "tier": map_entry["tier"],
-                        "rating": map_entry["rating"],
-                        "player_time_formatted": formatted_time,
-                        "player_rank": rank_val if rank_val is not None else ""
-                    })
+                        results.append({
+                            "map_name": map_entry["map_name"],
+                            "class": class_name,
+                            "tier": map_entry["tier"],
+                            "rating": map_entry["rating"],
+                            "player_time_formatted": formatted_time,
+                            "player_rank": rank_val if rank_val is not None else ""
+                        })
 
-                    if time_val is None and rank_val is None:
-                        failed_maps.append(map_entry)
+                        if time_val is None and rank_val is None:
+                            failed_maps.append(map_entry)
 
-                    self.progress["value"] += 1
-                    self.update_idletasks()
+                        self.progress["value"] += 1
+                        self.update_idletasks()
 
-            time.sleep(COOLDOWN_SECONDS)
+                if self.stop_requested:
+                    break
+                time.sleep(COOLDOWN_SECONDS)
+        else:
+            for i, map_entry in enumerate(maps, 1):
+                if self.stop_requested:
+                    self.log("⏹️ Process stopped by user.")
+                    break
+                _, time_val, rank_val = fetch_player_record(map_entry, player_id, class_id, self.log)
+                formatted_time = format_time(time_val)
 
-        headers = ["map_name", "class", "tier", "rating", "player_time_formatted", "player_rank"]
+                self.log(f"▶️ Processing map: {map_entry['map_name']}")
+
+                results.append({
+                    "map_name": map_entry["map_name"],
+                    "class": class_name,
+                    "tier": map_entry["tier"],
+                    "rating": map_entry["rating"],
+                    "player_time_formatted": formatted_time,
+                    "player_rank": rank_val if rank_val is not None else ""
+                })
+
+                if time_val is None and rank_val is None:
+                    failed_maps.append(map_entry)
+
+                self.progress["value"] += 1
+                self.update_idletasks()
 
         if results:
             with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=headers, delimiter=";")
+                writer = csv.DictWriter(f, fieldnames=["map_name", "class", "tier", "rating", "player_time_formatted", "player_rank"], delimiter=";")
                 writer.writeheader()
                 writer.writerows(results)
-
-            excel_output = OUTPUT_CSV.replace(".csv", ".xlsx")
-            write_excel_with_formatting(excel_output, results, headers)
-            self.log(f"📁 Excel file saved to {excel_output}")
 
         if failed_maps:
             with open(FAILED_CSV, "w", newline="", encoding="utf-8") as f:
@@ -291,8 +256,10 @@ class TempusApp(tk.Tk):
             self.log("✅ No failed maps!")
 
         self.log(f"✅ Process finished! Results saved to {OUTPUT_CSV}")
+
         self.start_button.config(state="enabled")
         self.stop_button.config(state="disabled")
+
 
 # === RUN APP ===
 if __name__ == "__main__":
