@@ -4,7 +4,7 @@ import os
 import sys
 
 # === CONFIG ===
-SAVE_PATH = r"C:\Users\bbartold\Desktop\Tempus2"  # Change as needed
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # Directory this script is in
 CSV_FILENAME = "all_maps_demoman_info.csv"
 MAP_LIST_URL = "https://tempus2.xyz/api/v0/maps/detailedList"
 DEMO_CLASS_KEY = "4"  # Demoman
@@ -56,7 +56,7 @@ def main():
     demoman_map_data = [extract_demoman_data(m) for m in maps]
     print(f"✅ Extracted data for {len(demoman_map_data)} maps.")
 
-    save_to_csv(demoman_map_data, SAVE_PATH, CSV_FILENAME)
+    save_to_csv(demoman_map_data, SCRIPT_DIR, CSV_FILENAME)
 
 if __name__ == "__main__":
     main()
