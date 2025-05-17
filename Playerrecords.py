@@ -37,16 +37,23 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# === CORE LOGIC ===
+# === TIME FORMATTER ===
 def format_time(seconds):
     if seconds is None:
         return ""
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
-    millis = int((seconds - int(seconds)) * 1000)
-    return f"{hours:02}:{minutes:02}:{secs:02}:{millis:03}"
+    millis = int((seconds - int(seconds)) * 100)
 
+    if hours > 0:
+        return f"{hours}:{minutes:02}:{secs:02}.{millis:02}"
+    elif minutes > 0:
+        return f"{minutes}:{secs:02}.{millis:02}"
+    else:
+        return f"{secs}.{millis:02}"
+
+# === CORE LOGIC ===
 def load_map_data(csv_path):
     full_path = os.path.join(os.getcwd(), csv_path)
     if not os.path.isfile(full_path):
@@ -101,8 +108,7 @@ class TempusApp(tk.Tk):
         self.geometry("700x500")
         self.configure(padx=20, pady=20)
 
-        self.stop_requested = False  # Flag to request stop
-
+        self.stop_requested = False
         self.create_widgets()
 
     def create_widgets(self):
@@ -147,7 +153,7 @@ class TempusApp(tk.Tk):
             messagebox.showerror("Input Error", "Player ID must be an integer.")
             return
 
-        self.stop_requested = False  # Reset stop flag
+        self.stop_requested = False
         self.start_button.config(state="disabled")
         self.stop_button.config(state="enabled")
 
